@@ -14,6 +14,19 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        ndk {
+            abiFilters.clear()
+            abiFilters.add("arm64-v8a")
+        }
+    }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
