@@ -1,0 +1,14 @@
+package com.cloakdroid.ui.profiles
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.cloakdroid.data.local.*
+import com.cloakdroid.data.network.ProxyTester
+import kotlinx.coroutines.launch
+@Composable fun ProfileEditorScreen(initial:ProfileEntity,vm:ProfileViewModel,tester:ProxyTester,onDone:()->Unit){ var p by remember{mutableStateOf(initial)}; var tab by remember{mutableIntStateOf(0)}; var report by remember{mutableStateOf("")}; val scope=rememberCoroutineScope(); Scaffold(topBar={TopAppBar(title={Text("Edit profile")},navigationIcon={TextButton(onDone){Text("Back")}},actions={TextButton({vm.save(p);onDone()}){Text("Save")}})}){pad->Column(Modifier.padding(pad).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){TabRow(tab){listOf("General","Proxy","Spoofing").forEachIndexed{i,t->Tab(i==tab,{tab=i},text={Text(t)})}};when(tab){0->General(p){p=it};1->ProxyEditor(p,{p=it},{scope.launch{report=tester.testProxy(p.proxy).fold({"${it.ip} • ${it.pingMs}ms • ${it.countryCode}"},{it.message?:"Proxy failed"})}});2->Spoofing(p){p=it}};if(report.isNotEmpty())Text(report)}}}
+@Composable private fun General(p:ProfileEntity,change:(ProfileEntity)->Unit){Field("Name",p.name){change(p.copy(name=it))};Field("Tag",p.tag){change(p.copy(tag=it))};Field("User agent",p.userAgent){change(p.copy(userAgent=it))}}
+@Composable private fun ProxyEditor(p:ProfileEntity,change:(ProfileEntity)->Unit,test:()->Unit){Row{ProxyType.entries.forEach{type->FilterChip(type==p.proxy.type,{change(p.copy(proxy=p.proxy.copy(type=type)))},{Text(type.name)})}};if(p.proxy.type!=ProxyType.DIRECT){Field("Host",p.proxy.host){change(p.copy(proxy=p.proxy.copy(host=it)))};Field("Port",p.proxy.port.toString()){change(p.copy(proxy=p.proxy.copy(port=it.toIntOrNull()?:0)))};Field("Username",p.proxy.username.orEmpty()){change(p.copy(proxy=p.proxy.copy(username=it)))};Field("Password",p.proxy.password.orEmpty()){change(p.copy(proxy=p.proxy.copy(password=it)))}};Button(test){Text("Test Proxy")}}
+@Composable private fun Spoofing(p:ProfileEntity,change:(ProfileEntity)->Unit){val f=p.fingerprint;Field("Latitude",f.latitude.toString()){change(p.copy(fingerprint=f.copy(latitude=it.toDoubleOrNull()?:f.latitude)))};Field("Longitude",f.longitude.toString()){change(p.copy(fingerprint=f.copy(longitude=it.toDoubleOrNull()?:f.longitude)))};Field("Timezone",f.timezone){change(p.copy(fingerprint=f.copy(timezone=it)))};Row{Text("WebRTC killswitch",Modifier.weight(1f));Switch(f.webrtcDisabled,{change(p.copy(fingerprint=f.copy(webrtcDisabled=it)))}}}
+@Composable private fun Field(label:String,value:String,onChange:(String)->Unit)=OutlinedTextField(value,onChange,Modifier.fillMaxWidth(),label={Text(label)},singleLine=true)
